@@ -121,3 +121,21 @@ static void zboss_signal_handler(zb_bufid_t bufid){
         zb_buf_free(bufid);
     }
 }
+
+int main(void){
+    LOG_INF("Starting Zigbee Light Bulb (Sleepy End Device)");
+    gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE); /* configure led gpio as output*/
+    
+    ZB_ZCL_REGISTER_DEVICE_CB(zcl_device_cb); /* tell zboss which function ahould be called as an event handler callback */
+    ZB_AF_REGISTER_DEVICE_CTX(&light_bulb_ctx); /* register device context */
+    app_clusters_attr_init(); /* attribute init function */
+    
+    zb_set_ed_timeout(ED_AGING_TIMEOUT_64MIN); /* set end device waiting timeout - if no reaction for 64 minutes -> end device is dead */
+    zb_set_keepalive_timeout(ZB_MILLISECONDS_TO_BEACON_INTERVAL(30000)); /* set a keepalive timeout - how often an end device contacts parent to say it's alive */
+    zigbee_configure_sleepy_behavior(true); /* enable sleepy behavoir */
+
+    zb_zdo_pim_set_long_poll_interval(3000); /* how often an end device wakes up to ask a parent about a new message  */
+    zigbee_enable(); /* enable zigbee */
+    k_sleep(K_FOREVER); /* sleep forever*/
+    return 0;
+}
