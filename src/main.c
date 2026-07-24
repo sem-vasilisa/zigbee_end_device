@@ -77,3 +77,47 @@ static zb_uint8_t zcl_device_cb(zb_bufid_t bufid){
     }
     return ZB_FALSE;
 }
+
+static void zboss_signal_handler(zb_bufid_t bufid){
+    zb_zdo_app_signal_hdr_t *sg_p  = NULL;
+    zb_zdo_app_signal_type_t  sig  = zb_get_app_signal(bufid, &sg_p);
+    zb_ret_t status = ZB_GET_APP_SIGNAL_STATUS(bufid);
+
+    switch(sig){
+        case ZB_BDB_SIGNAL_DEVICE_FIRST_START:
+            LOG_INF("Joining network for the first time...");
+            bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
+            break;
+
+        case ZB_BDB_SIGNAL_DEVICE_REBOOT:
+            bdb_start_top_level_commissioning(ZB_BDB_NETWORK_STEERING);
+            break;
+
+        case ZB_BDB_SIGNAL_STEERING:
+            if(status == RET_OK){
+                uint16_t panId = zb_get_pan_id();
+                uint8_t channel = zb_get_current_channel();
+                uint16_t shortAddr = zb_get_short_address();
+
+                LOG_INF("Joined a network: PAN ID=0x%04X, Channel=%u, Short Addr=0x%04X", panId, channel, shortAddr);
+            }
+            else{
+                /* ZB network unit of time is BI(beacon interval), ZB devices use it to schedule operations. Beacons because zb in built on ieee802.15.4 which measures time in beacon intervals */
+                ZB_SCHEDULE_APP_ALARM((zb_callback_t)bdb_start_top_level_commissioning, ZB_BDB_NETWORK_STEERING, ZB_MILLISECONDS_TO_BEACON_INTERVAL(1000)); /* after delay call this function */
+            }
+            break;
+
+        /* if an end device leaves the zigbee network */
+        case ZB_ZDO_SIGNAL_LEAVE:
+            LOG_INF("Reconnecting the network...");
+            ZB_SCHEDULE_APP_ALARM((zb_callback_t)bdb_start_top_level_commissioning, ZB_BDB_NETWORK_STEERING, ZB_MILLISECONDS_TO_BEACON_INTERVAL(1000)); /* after delay call this function */
+            break;
+
+        default:
+            ZB_ERROR_CHECK(zigbee_default_signal_handler(bufid));
+            break;
+    }
+    if (bufid) {
+        zb_buf_free(bufid);
+    }
+}
