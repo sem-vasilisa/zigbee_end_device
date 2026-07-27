@@ -6,6 +6,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zigbee/zigbee_app_utils.h> // Nordic's helper functions (zigbee_enable, sleepy behavior, etc.)
 #include <zigbee/zigbee_error_handler.h> // ZB_ERROR_CHECK macro
+#include <zephyr/drivers/sensor.h> /* gives access to zephyr sensor driver api */
+#include <zephyr/drivers/i2c.h>
 
 LOG_MODULE_REGISTER(btz, LOG_LEVEL_INF);
 
@@ -46,11 +48,11 @@ ZBOSS_DECLARE_DEVICE_CTX_1_EP(light_bulb_ctx, light_bulb_ep);
 static void on_off_set_value(zb_bool_t value){
     dev_ctx.on_off_attr.on_off = value;
     if(value){
-        LOG_INF("LED IS ON!");
+        LOG_INF("LED IS OFF!");
         gpio_pin_set_dt(&led, 1);
     }
     else{
-        LOG_INF("LED IS OFF!");
+        LOG_INF("LED IS ON!");
         gpio_pin_set_dt(&led, 0);
     }
 }
@@ -78,7 +80,7 @@ static zb_uint8_t zcl_device_cb(zb_bufid_t bufid){
     return ZB_FALSE;
 }
 
-static void zboss_signal_handler(zb_bufid_t bufid){
+void zboss_signal_handler(zb_bufid_t bufid){
     zb_zdo_app_signal_hdr_t *sg_p  = NULL;
     zb_zdo_app_signal_type_t  sig  = zb_get_app_signal(bufid, &sg_p);
     zb_ret_t status = ZB_GET_APP_SIGNAL_STATUS(bufid);
@@ -123,9 +125,91 @@ static void zboss_signal_handler(zb_bufid_t bufid){
 }
 
 int main(void){
+    const struct device *bmi270_dev = DEVICE_DT_GET(DT_NODELABEL(bmi270)); /* motion sensor */
+    struct sensor_value value_x, value_y, value_z; /* each value has two integers - whole part and fractional */
+    int ret;
+
+    const struct device *vdd_susp_dev = DEVICE_DT_GET(DT_NODELABEL(sensor_pwr)); /* switch to control power to the sensors */
+
+    static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* tempearture sensor */
+
     LOG_INF("Starting Zigbee Light Bulb (Sleepy End Device)");
     gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE); /* configure led gpio as output*/
-    
+
+    if (!device_is_ready(bmi270_dev)) {
+        LOG_ERR("Sensor bmi270 is not ready...");
+        return -1;
+    }
+
+    if (!device_is_ready(vdd_susp_dev)) {
+        LOG_ERR("vdd is not ready...");
+        return -1;
+    }
+
+    if (!device_is_ready(sts4x.bus)) {
+        LOG_ERR("STS4x I2C bus is not ready...");
+        return -1;
+    }
+
+    /* ----- sensor bmi270 ----- */
+    struct sensor_value odr = { .val1 = 100, .val2 = 0 }; // 100 Hz
+    ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr);
+    LOG_INF("odr set ret=%d", ret);
+
+    k_sleep(K_MSEC(50));
+
+    ret = sensor_sample_fetch(bmi270_dev); /* read data from a sensor and store it in an internal buffer, we read the data from the buffer using sensor_channel_get */
+    LOG_INF("after fetch, ret=%d", ret);
+    if (ret) {
+        LOG_ERR("sensor_sample_fetch failed: %d", ret);
+    }
+
+    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_X, &value_x);
+    if (ret) {
+        LOG_ERR("sensor_channel_get X failed: %d", ret);
+    }
+
+    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Y, &value_y);
+    if (ret) {
+        LOG_ERR("sensor_channel_get Y failed: %d", ret);
+    }
+
+    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Z, &value_z);
+    if (ret) {
+        LOG_ERR("sensor_channel_get Z failed: %d", ret);
+    }
+
+    LOG_INF("x=%d.%06d", value_x.val1, value_x.val2 < 0 ? -value_x.val2 : value_x.val2);
+    LOG_INF("y=%d.%06d", value_y.val1, value_y.val2 < 0 ? -value_y.val2 : value_y.val2);
+    LOG_INF("z=%d.%06d", value_z.val1, value_z.val2 < 0 ? -value_z.val2 : value_z.val2);
+
+    /* temperature sensor */
+
+    /* -- measure command -- */
+    uint8_t cmd = 0xFD; // measure T, high precision
+    ret = i2c_write_dt(&sts4x, &cmd, 1);
+    LOG_INF("sts4x write ret=%d", ret);
+
+    k_sleep(K_MSEC(10));
+
+    /* -- read 3 bytes back -- */
+    uint8_t rx_buf[3];
+    ret = i2c_read_dt(&sts4x, rx_buf, 3);
+    LOG_INF("sts4x read ret=%d", ret);
+
+    LOG_INF("raw bytes: %02x %02x %02x", rx_buf[0], rx_buf[1], rx_buf[2]);
+
+    /* ---- vdd ---- */
+    for(int i=0; i<4; i++){
+        ret = regulator_enable(vdd_susp_dev);
+        LOG_INF("enable ret=%d", ret);
+        k_sleep(K_MSEC(10));
+        ret = regulator_disable(vdd_susp_dev);
+        LOG_INF("disable ret=%d", ret);
+        k_sleep(K_MSEC(500));
+    }
+
+    /* ---- */
     ZB_ZCL_REGISTER_DEVICE_CB(zcl_device_cb); /* tell zboss which function ahould be called as an event handler callback */
     ZB_AF_REGISTER_DEVICE_CTX(&light_bulb_ctx); /* register device context */
     app_clusters_attr_init(); /* attribute init function */
@@ -136,6 +220,7 @@ int main(void){
 
     zb_zdo_pim_set_long_poll_interval(3000); /* how often an end device wakes up to ask a parent about a new message  */
     zigbee_enable(); /* enable zigbee */
+
     k_sleep(K_FOREVER); /* sleep forever*/
     return 0;
 }
