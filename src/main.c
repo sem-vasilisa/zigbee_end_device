@@ -21,6 +21,7 @@ struct zb_device_ctx{
     zb_zcl_basic_attrs_ext_t basic_attr;
     zb_zcl_identify_attrs_t identify_attr;
     zb_zcl_on_off_attrs_t on_off_attr;
+    zb_zcl_temp_measurement_attrs_t temp_attr; /* temperature attribute */
 };
 
 static struct zb_device_ctx dev_ctx;
@@ -30,15 +31,22 @@ static void app_clusters_attr_init(void){
     dev_ctx.basic_attr.power_source =  ZB_ZCL_BASIC_POWER_SOURCE_BATTERY;
     dev_ctx.identify_attr.identify_time = ZB_ZCL_IDENTIFY_IDENTIFY_TIME_DEFAULT_VALUE;
     dev_ctx.on_off_attr.on_off = ZB_FALSE;
+    dev_ctx.temp_attr.measure_value = 0;  /* current temperature reading */
+    dev_ctx.temp_attr.min_measure_value = -4000; /* the lowest temperature this sensor can report = -40.00 °C */
+    dev_ctx.temp_attr.max_measure_value = 12500; /* the highest temperature this sensor can report = 125.00 °C */
+    dev_ctx.temp_attr.tolerance = 20; /* ±0.20 °C */
 }
 
-/* attribute lists*/
+/* attribute lists */
 ZB_ZCL_DECLARE_BASIC_ATTRIB_LIST(basic_attrib_list, &dev_ctx.basic_attr.zcl_version, &dev_ctx.basic_attr.power_source);
 ZB_ZCL_DECLARE_IDENTIFY_ATTRIB_LIST(identify_attr_list,&dev_ctx.identify_attr.identify_time);
 ZB_ZCL_DECLARE_ON_OFF_ATTRIB_LIST(on_off_attr_list, &dev_ctx.on_off_attr.on_off);
 
+// /* attribute list for the temperature */
+ZB_ZCL_DECLARE_TEMP_MEASUREMENT_ATTRIB_LIST(temp_attr_list, &dev_ctx.temp_attr.measure_value, &dev_ctx.temp_attr.min_measure_value, &dev_ctx.temp_attr.max_measure_value, &dev_ctx.temp_attr.tolerance);
+
 /* cluster lists */
-ZB_DECLARE_LIGHT_BULB_CLUSTER_LIST(light_bulb_clusters, basic_attrib_list, identify_attr_list, on_off_attr_list);
+ZB_DECLARE_LIGHT_BULB_CLUSTER_LIST(light_bulb_clusters, basic_attrib_list, identify_attr_list, on_off_attr_list, temp_attr_list); /* temp attr list was added */
 
 /* endpoint */
 ZB_DECLARE_LIGHT_BULB_EP(light_bulb_ep, LIGHT_BULB_ENDPOINT, light_bulb_clusters);
@@ -154,36 +162,36 @@ int main(void){
     }
 
     /* ----- sensor bmi270 ----- */
-    struct sensor_value odr = { .val1 = 100, .val2 = 0 }; /* 100 Hz = 100 samples per second */ 
-    ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr); /* configures how the sensor operates */
-    LOG_INF("odr set ret=%d", ret);
+    // struct sensor_value odr = { .val1 = 100, .val2 = 0 }; /* 100 Hz = 100 samples per second */ 
+    // ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr); /* configures how the sensor operates */
+    // LOG_INF("odr set ret=%d", ret);
 
-    k_sleep(K_MSEC(50)); /* give the sensor time to start producing data using the new configuration */
+    // k_sleep(K_MSEC(50)); /* give the sensor time to start producing data using the new configuration */
 
-    ret = sensor_sample_fetch(bmi270_dev); /* get data from a sensor and store it in an internal buffer, we read the data from the buffer using sensor_channel_get */
-    LOG_INF("after fetch, ret=%d", ret);
-    if (ret) {
-        LOG_ERR("sensor_sample_fetch failed: %d", ret);
-    }
+    // ret = sensor_sample_fetch(bmi270_dev); /* get data from a sensor and store it in an internal buffer, we read the data from the buffer using sensor_channel_get */
+    // LOG_INF("after fetch, ret=%d", ret);
+    // if (ret) {
+    //     LOG_ERR("sensor_sample_fetch failed: %d", ret);
+    // }
 
-    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_X, &value_x);
-    if (ret) {
-        LOG_ERR("sensor_channel_get X failed: %d", ret);
-    }
+    // ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_X, &value_x);
+    // if (ret) {
+    //     LOG_ERR("sensor_channel_get X failed: %d", ret);
+    // }
 
-    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Y, &value_y);
-    if (ret) {
-        LOG_ERR("sensor_channel_get Y failed: %d", ret);
-    }
+    // ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Y, &value_y);
+    // if (ret) {
+    //     LOG_ERR("sensor_channel_get Y failed: %d", ret);
+    // }
 
-    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Z, &value_z);
-    if (ret) {
-        LOG_ERR("sensor_channel_get Z failed: %d", ret);
-    }
+    // ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Z, &value_z);
+    // if (ret) {
+    //     LOG_ERR("sensor_channel_get Z failed: %d", ret);
+    // }
 
-    LOG_INF("x=%d.%06d", value_x.val1, value_x.val2 < 0 ? -value_x.val2 : value_x.val2);
-    LOG_INF("y=%d.%06d", value_y.val1, value_y.val2 < 0 ? -value_y.val2 : value_y.val2);
-    LOG_INF("z=%d.%06d", value_z.val1, value_z.val2 < 0 ? -value_z.val2 : value_z.val2);
+    // LOG_INF("x=%d.%06d", value_x.val1, value_x.val2 < 0 ? -value_x.val2 : value_x.val2);
+    // LOG_INF("y=%d.%06d", value_y.val1, value_y.val2 < 0 ? -value_y.val2 : value_y.val2);
+    // LOG_INF("z=%d.%06d", value_z.val1, value_z.val2 < 0 ? -value_z.val2 : value_z.val2);
 
     /* temperature sensor */
 
