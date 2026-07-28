@@ -1,3 +1,6 @@
+#ifndef ZB_SENSOR_NODE_H
+#define ZB_SENSOR_NODE_H
+
 #define ZB_LIGHT_BULB_DEVICE_ID 0x0100    /* hue app: it's an On/Off Light */
 
 #define ZB_DEVICE_VER_LIGHT_BULB 0
@@ -69,3 +72,5 @@ ZB_DECLARE_SIMPLE_DESC(3, 0); /* 3 cluster description in one array (basic, iden
 			(ZB_AF_SIMPLE_DESC_TYPE(ZB_LIGHT_BULB_IN_CLUSTER_NUM, ZB_LIGHT_BULB_OUT_CLUSTER_NUM) *)&simple_desc_##ep_name, \
 0, NULL, /* No reporting ctx */ \
 0, NULL) 
+
+#endif 
