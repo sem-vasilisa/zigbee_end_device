@@ -8,6 +8,7 @@
 #include <zigbee/zigbee_error_handler.h> // ZB_ERROR_CHECK macro
 #include <zephyr/drivers/sensor.h> /* gives access to zephyr sensor driver api */
 #include <zephyr/drivers/i2c.h>
+#include <zephyr/sys/crc.h>
 
 LOG_MODULE_REGISTER(btz, LOG_LEVEL_INF);
 
@@ -125,17 +126,18 @@ void zboss_signal_handler(zb_bufid_t bufid){
 }
 
 int main(void){
-    const struct device *bmi270_dev = DEVICE_DT_GET(DT_NODELABEL(bmi270)); /* motion sensor */
+    const struct device *bmi270_dev = DEVICE_DT_GET(DT_NODELABEL(bmi270)); /* --- motion sensor --- */
     struct sensor_value value_x, value_y, value_z; /* each value has two integers - whole part and fractional */
     int ret;
 
-    const struct device *vdd_susp_dev = DEVICE_DT_GET(DT_NODELABEL(sensor_pwr)); /* switch to control power to the sensors */
+    const struct device *vdd_susp_dev = DEVICE_DT_GET(DT_NODELABEL(sensor_pwr)); /* --- switch to control power to the sensors --- */
 
-    static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* tempearture sensor */
+    static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* --- tempearture sensor --- */
 
     LOG_INF("Starting Zigbee Light Bulb (Sleepy End Device)");
     gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE); /* configure led gpio as output*/
 
+    /* is device successfully initialized and ready to communicate */
     if (!device_is_ready(bmi270_dev)) {
         LOG_ERR("Sensor bmi270 is not ready...");
         return -1;
@@ -152,13 +154,13 @@ int main(void){
     }
 
     /* ----- sensor bmi270 ----- */
-    struct sensor_value odr = { .val1 = 100, .val2 = 0 }; // 100 Hz
-    ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr);
+    struct sensor_value odr = { .val1 = 100, .val2 = 0 }; /* 100 Hz = 100 samples per second */ 
+    ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr); /* configures how the sensor operates */
     LOG_INF("odr set ret=%d", ret);
 
-    k_sleep(K_MSEC(50));
+    k_sleep(K_MSEC(50)); /* give the sensor time to start producing data using the new configuration */
 
-    ret = sensor_sample_fetch(bmi270_dev); /* read data from a sensor and store it in an internal buffer, we read the data from the buffer using sensor_channel_get */
+    ret = sensor_sample_fetch(bmi270_dev); /* get data from a sensor and store it in an internal buffer, we read the data from the buffer using sensor_channel_get */
     LOG_INF("after fetch, ret=%d", ret);
     if (ret) {
         LOG_ERR("sensor_sample_fetch failed: %d", ret);
@@ -197,17 +199,29 @@ int main(void){
     ret = i2c_read_dt(&sts4x, rx_buf, 3);
     LOG_INF("sts4x read ret=%d", ret);
 
-    LOG_INF("raw bytes: %02x %02x %02x", rx_buf[0], rx_buf[1], rx_buf[2]);
+    LOG_HEXDUMP_INF(rx_buf, sizeof(rx_buf), "sts4x raw");
 
-    /* ---- vdd ---- */
-    for(int i=0; i<4; i++){
-        ret = regulator_enable(vdd_susp_dev);
-        LOG_INF("enable ret=%d", ret);
-        k_sleep(K_MSEC(10));
-        ret = regulator_disable(vdd_susp_dev);
-        LOG_INF("disable ret=%d", ret);
-        k_sleep(K_MSEC(500));
+    /* convert raw bytes into celsius degrees */
+    uint8_t crc = crc8(rx_buf, 2, 0x31, 0xFF, false);
+    LOG_INF("computed crc=%02x, received crc=%02x", crc, rx_buf[2]);
+
+    if (crc == rx_buf[2]) {
+        uint16_t raw = (rx_buf[0] << 8) | rx_buf[1];
+        int64_t temp_milli_c = -45000 + (175000LL * (int64_t)raw) / 65535;
+        LOG_INF("temperature = %lld.%03lld C", temp_milli_c / 1000, temp_milli_c % 1000);
+    } else {
+        LOG_ERR("STS4x CRC mismatch!");
     }
+
+    /* ---- vdd testing ---- */
+    // for(int i=0; i<4; i++){
+    //     ret = regulator_enable(vdd_susp_dev);
+    //     LOG_INF("enable ret=%d", ret);
+    //     k_sleep(K_MSEC(10));
+    //     ret = regulator_disable(vdd_susp_dev);
+    //     LOG_INF("disable ret=%d", ret);
+    //     k_sleep(K_MSEC(500));
+    // }
 
     /* ---- */
     ZB_ZCL_REGISTER_DEVICE_CB(zcl_device_cb); /* tell zboss which function ahould be called as an event handler callback */
