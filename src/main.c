@@ -17,6 +17,8 @@ LOG_MODULE_REGISTER(btz, LOG_LEVEL_INF);
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
 
+static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* --- tempearture sensor --- */
+
 struct zb_device_ctx{
     zb_zcl_basic_attrs_ext_t basic_attr;
     zb_zcl_identify_attrs_t identify_attr;
@@ -133,105 +135,59 @@ void zboss_signal_handler(zb_bufid_t bufid){
     }
 }
 
-int main(void){
-    const struct device *bmi270_dev = DEVICE_DT_GET(DT_NODELABEL(bmi270)); /* --- motion sensor --- */
-    struct sensor_value value_x, value_y, value_z; /* each value has two integers - whole part and fractional */
+static void measure_and_report(zb_uint8_t param){
     int ret;
-
-    const struct device *vdd_susp_dev = DEVICE_DT_GET(DT_NODELABEL(sensor_pwr)); /* --- switch to control power to the sensors --- */
-
-    static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* --- tempearture sensor --- */
-
-    LOG_INF("Starting Zigbee Light Bulb (Sleepy End Device)");
-    gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE); /* configure led gpio as output*/
-
-    /* is device successfully initialized and ready to communicate */
-    if (!device_is_ready(bmi270_dev)) {
-        LOG_ERR("Sensor bmi270 is not ready...");
-        return -1;
-    }
-
-    if (!device_is_ready(vdd_susp_dev)) {
-        LOG_ERR("vdd is not ready...");
-        return -1;
-    }
 
     if (!device_is_ready(sts4x.bus)) {
         LOG_ERR("STS4x I2C bus is not ready...");
-        return -1;
+        return ;
     }
-
-    /* ----- sensor bmi270 ----- */
-    // struct sensor_value odr = { .val1 = 100, .val2 = 0 }; /* 100 Hz = 100 samples per second */ 
-    // ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr); /* configures how the sensor operates */
-    // LOG_INF("odr set ret=%d", ret);
-
-    // k_sleep(K_MSEC(50)); /* give the sensor time to start producing data using the new configuration */
-
-    // ret = sensor_sample_fetch(bmi270_dev); /* get data from a sensor and store it in an internal buffer, we read the data from the buffer using sensor_channel_get */
-    // LOG_INF("after fetch, ret=%d", ret);
-    // if (ret) {
-    //     LOG_ERR("sensor_sample_fetch failed: %d", ret);
-    // }
-
-    // ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_X, &value_x);
-    // if (ret) {
-    //     LOG_ERR("sensor_channel_get X failed: %d", ret);
-    // }
-
-    // ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Y, &value_y);
-    // if (ret) {
-    //     LOG_ERR("sensor_channel_get Y failed: %d", ret);
-    // }
-
-    // ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Z, &value_z);
-    // if (ret) {
-    //     LOG_ERR("sensor_channel_get Z failed: %d", ret);
-    // }
-
-    // LOG_INF("x=%d.%06d", value_x.val1, value_x.val2 < 0 ? -value_x.val2 : value_x.val2);
-    // LOG_INF("y=%d.%06d", value_y.val1, value_y.val2 < 0 ? -value_y.val2 : value_y.val2);
-    // LOG_INF("z=%d.%06d", value_z.val1, value_z.val2 < 0 ? -value_z.val2 : value_z.val2);
-
     /* temperature sensor */
 
     /* -- measure command -- */
     uint8_t cmd = 0xFD; // measure T, high precision
     ret = i2c_write_dt(&sts4x, &cmd, 1);
-    LOG_INF("sts4x write ret=%d", ret);
+    // LOG_INF("sts4x write ret=%d", ret);
 
     k_sleep(K_MSEC(10));
 
     /* -- read 3 bytes back -- */
     uint8_t rx_buf[3];
     ret = i2c_read_dt(&sts4x, rx_buf, 3);
-    LOG_INF("sts4x read ret=%d", ret);
+    // LOG_INF("sts4x read ret=%d", ret);
 
-    LOG_HEXDUMP_INF(rx_buf, sizeof(rx_buf), "sts4x raw");
+    // LOG_HEXDUMP_INF(rx_buf, sizeof(rx_buf), "sts4x raw");
 
     /* convert raw bytes into celsius degrees */
     uint8_t crc = crc8(rx_buf, 2, 0x31, 0xFF, false);
-    LOG_INF("computed crc=%02x, received crc=%02x", crc, rx_buf[2]);
+    // LOG_INF("computed crc=%02x, received crc=%02x", crc, rx_buf[2]);
 
     if (crc == rx_buf[2]) {
         uint16_t raw = (rx_buf[0] << 8) | rx_buf[1];
         int64_t temp_milli_c = -45000 + (175000LL * (int64_t)raw) / 65535;
+
+        zb_int16_t zcl_temp = (zb_int16_t)(temp_milli_c / 10); // millidegrees -> centidegrees
+        ZB_ZCL_SET_ATTRIBUTE(
+            LIGHT_BULB_ENDPOINT,
+            ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT,
+            ZB_ZCL_CLUSTER_SERVER_ROLE,
+            ZB_ZCL_ATTR_TEMP_MEASUREMENT_VALUE_ID,
+            (zb_uint8_t *)&zcl_temp,
+            ZB_FALSE
+        );
+
         LOG_INF("temperature = %lld.%03lld C", temp_milli_c / 1000, temp_milli_c % 1000);
     } else {
         LOG_ERR("STS4x CRC mismatch!");
     }
+    ZB_SCHEDULE_APP_ALARM(measure_and_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(60000));
+}
 
-    /* ---- vdd testing ---- */
-    // for(int i=0; i<4; i++){
-    //     ret = regulator_enable(vdd_susp_dev);
-    //     LOG_INF("enable ret=%d", ret);
-    //     k_sleep(K_MSEC(10));
-    //     ret = regulator_disable(vdd_susp_dev);
-    //     LOG_INF("disable ret=%d", ret);
-    //     k_sleep(K_MSEC(500));
-    // }
+int main(void){
 
-    /* ---- */
+    LOG_INF("Starting Zigbee Light Bulb (Sleepy End Device)");
+    gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE); /* configure led gpio as output*/
+
     ZB_ZCL_REGISTER_DEVICE_CB(zcl_device_cb); /* tell zboss which function ahould be called as an event handler callback */
     ZB_AF_REGISTER_DEVICE_CTX(&light_bulb_ctx); /* register device context */
     app_clusters_attr_init(); /* attribute init function */
@@ -242,6 +198,8 @@ int main(void){
 
     zb_zdo_pim_set_long_poll_interval(3000); /* how often an end device wakes up to ask a parent about a new message  */
     zigbee_enable(); /* enable zigbee */
+
+    ZB_SCHEDULE_APP_ALARM(measure_and_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(1000)); // first run, 1s after scheduler starts
 
     k_sleep(K_FOREVER); /* sleep forever*/
     return 0;
