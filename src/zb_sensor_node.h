@@ -66,6 +66,6 @@ ZB_DECLARE_SIMPLE_DESC(3, 0); /* 3 cluster description in one array (basic, iden
 		ZB_LIGHT_BULB_IN_CLUSTER_NUM, ZB_LIGHT_BULB_OUT_CLUSTER_NUM); \
 		ZB_AF_DECLARE_ENDPOINT_DESC(ep_name, ep_id, ZB_AF_HA_PROFILE_ID, 0, NULL,     \
 		ZB_ZCL_ARRAY_SIZE(cluster_list, zb_zcl_cluster_desc_t), cluster_list, \
-			(ZB_AF_SIMPLE_DESC_TYPE(ZB_LIGHT_BULB_IN_CLUSTER_NUM, ZB_LIGHT_BULB_OUT_CLUSTER_NUM) *)&simple_desc_##ep_name, \
+			(zb_af_simple_desc_1_1_t *)&simple_desc_##ep_name, \
 0, NULL, /* No reporting ctx */ \
 0, NULL) 
