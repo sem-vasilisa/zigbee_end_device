@@ -1,0 +1,26 @@
+# Parametry aplikacji sterowane build-time (-DCONFIG_...=<wartosc>).
+#
+# Wartosci domyslne = zachowanie sprzed wprowadzenia tego pliku, wiec build
+# bez zadnej flagi daje dokladnie ten sam obraz co wczesniej.
+
+config ZB_LONG_POLL_INTERVAL_S
+	int "Long poll interval - jak czesto SED pyta rodzica o wiadomosci [s]"
+	default 30
+	range 1 86400
+	help
+	  Glowny parametr poboru pradu sleepy end device: co tyle sekund radio
+	  budzi sie i odpytuje rodzica. Dluzej = mniej pradu, ale wieksze
+	  opoznienie odbioru. Sterowane build-time:
+	  -DCONFIG_ZB_LONG_POLL_INTERVAL_S=<sekundy>.
+
+config ZB_REPORT_PERIOD_S
+	int "Okres wysylania raportu testowego do koordynatora [s]"
+	default 60
+	range 1 86400
+	help
+	  Co tyle sekund aplikacja wysyla ZCL Report Attribute z atrybutem
+	  On/Off. Ten sam odstep obowiazuje przy ponowieniu, gdy zabraklo
+	  bufora. Sterowane build-time:
+	  -DCONFIG_ZB_REPORT_PERIOD_S=<sekundy>.
+
+source "Kconfig.zephyr"
