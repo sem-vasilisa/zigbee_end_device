@@ -147,8 +147,7 @@ static void send_test_report(zb_uint8_t param)
     ZB_ZCL_PACKET_PUT_DATA8(ptr, ZB_ZCL_ATTR_TYPE_BOOL); /* what data type */
     ZB_ZCL_PACKET_PUT_DATA8(ptr, test_value); /* the actual value */
 
-    ZB_ZCL_FINISH_PACKET(bufid, ptr)
-    ZB_ZCL_SEND_COMMAND_SHORT(bufid, coord_short_addr, ZB_APS_ADDR_MODE_16_ENDP_PRESENT, COORDINATOR_EP, LIGHT_BULB_ENDPOINT, ZB_AF_HA_PROFILE_ID, ZB_ZCL_CLUSTER_ID_ON_OFF, NULL); /* combines the packet and sends it */
+    ZB_ZCL_SEND_COMMAND_SHORT_WITHOUT_ACK(bufid, ptr, coord_short_addr, ZB_APS_ADDR_MODE_16_ENDP_PRESENT, COORDINATOR_EP, LIGHT_BULB_ENDPOINT, ZB_AF_HA_PROFILE_ID, ZB_ZCL_CLUSTER_ID_ON_OFF, NULL, 0);
     LOG_INF("Sent test report"); /* locally we see that frame was sent */
     ZB_SCHEDULE_APP_ALARM(send_test_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(20000)); /* function repeats every minute */
 }
@@ -162,11 +161,13 @@ int main(void){
     app_clusters_attr_init(); /* attribute init function */
     
     zb_set_ed_timeout(ED_AGING_TIMEOUT_64MIN); /* set end device waiting timeout - if no reaction for 64 minutes -> end device is dead */
-    zb_set_keepalive_timeout(ZB_MILLISECONDS_TO_BEACON_INTERVAL(30000)); /* set a keepalive timeout - how often an end device contacts parent to say it's alive */
+    // keepalive timeout should be ≥ poll interval.
+    zb_set_keepalive_timeout(ZB_MILLISECONDS_TO_BEACON_INTERVAL(60000)); /* how often the end device tells its parent "I'm still here" */
     zigbee_configure_sleepy_behavior(true); /* enable sleepy behavoir */
 
+    zb_zdo_pim_set_long_poll_interval(30000); /* how often an end device wakes up to poll a parent about a new message  */
     zigbee_enable(); /* enable zigbee */
-    zb_zdo_pim_set_long_poll_interval(20000); /* how often an end device wakes up to ask a parent about a new message  */
+    
     
     ZB_SCHEDULE_APP_ALARM(send_test_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(1000));
     k_sleep(K_FOREVER); /* sleep forever*/
