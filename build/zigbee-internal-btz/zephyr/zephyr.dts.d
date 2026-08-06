@@ -1,0 +1,34 @@
+empty_file.o: \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/misc/empty_file.c \
+ /home/goodbyte/projects/workspace_zigbee/boards/goodbyte/BTZ_EndDevice/BTZ_EndDevice_nrf54l15_cpuapp.dts \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/arm/nordic/nrf54l15_cpuapp.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/common/nordic/nrf54l15.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/common/nordic/nrf54l_05_10_15.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/common/mem.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/common/nordic/nrf_common.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/adc/adc.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/dt-util.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_macro.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_internal.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_loops.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_listify.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_internal_is_eq.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_internal_util_inc.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_internal_util_dec.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/sys/util_internal_util_x2.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/gpio/gpio.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/i2c/i2c.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/input/input-event-codes.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/pinctrl/nrf-pinctrl.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/pwm/pwm.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/common/freq.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/arm/nordic/override.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/adc/nrf-saadc-nrf54l.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/adc/nrf-saadc-v2.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/adc/nrf-saadc.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/include/zephyr/dt-bindings/regulator/nrf5x.h \
+ /home/goodbyte/projects/workspace_zigbee/zephyr/dts/arm/nordic/nrf54l_05_10_15_cpuapp.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/boards/goodbyte/BTZ_EndDevice/BTZ_EndDevice_cpuapp_common.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/boards/goodbyte/BTZ_EndDevice/BTZ_EndDevice_common.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/boards/goodbyte/BTZ_EndDevice/BTZ_EndDevice-pinctrl.dtsi \
+ /home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/boards/BTZ_EndDevice_nrf54l15_cpuapp.overlay

@@ -17,7 +17,10 @@ LOG_MODULE_REGISTER(btz, LOG_LEVEL_INF);
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE, gpios);
 
-static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* --- tempearture sensor --- */
+static const struct i2c_dt_spec sts4x = I2C_DT_SPEC_GET(DT_NODELABEL(sts4x)); /* --- temperature sensor --- */
+
+/* --- motion sensor --- */
+static const struct device *bmi270_dev = DEVICE_DT_GET(DT_NODELABEL(bmi270));
 
 struct zb_device_ctx{
     zb_zcl_basic_attrs_ext_t basic_attr;
@@ -135,58 +138,113 @@ void zboss_signal_handler(zb_bufid_t bufid){
     }
 }
 
+static int configure_motion(void){
+    struct sensor_value odr = { .val1 = 100, .val2 = 0 };   /* 100 Hz */
+    struct sensor_value fs  = { .val1 = 2,   .val2 = 0 };   /* +/- 2 g */
+    int ret;
+
+    ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_FULL_SCALE, &fs);
+    
+    if (ret) {
+        LOG_ERR("bmi270 full-scale set failed: %d", ret);
+        return ret;
+    }
+
+    ret = sensor_attr_set(bmi270_dev, SENSOR_CHAN_ACCEL_XYZ, SENSOR_ATTR_SAMPLING_FREQUENCY, &odr);
+    
+    if (ret) {
+        LOG_ERR("bmi270 ODR set failed: %d", ret);
+        return ret;
+    }
+    
+    k_sleep(K_MSEC(50));
+    return 0;
+}
+
+static void read_motion(void){
+    struct sensor_value value_x, value_y, value_z;
+    int ret;
+
+    ret = sensor_sample_fetch(bmi270_dev);
+    if (ret) {
+        LOG_ERR("sensor_sample_fetch failed: %d", ret);
+        return;
+    }
+
+    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_X, &value_x);
+    if (ret) {
+        LOG_ERR("sensor_channel_get X failed: %d", ret);
+        return;
+    }
+
+    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Y, &value_y);
+    if (ret) {
+        LOG_ERR("sensor_channel_get Y failed: %d", ret);
+        return;
+    }
+
+    ret = sensor_channel_get(bmi270_dev, SENSOR_CHAN_ACCEL_Z, &value_z);
+    if (ret) {
+        LOG_ERR("sensor_channel_get Z failed: %d", ret);
+        return;
+    }
+
+    LOG_INF("accel x=%d.%06d", value_x.val1, value_x.val2 < 0 ? -value_x.val2 : value_x.val2);
+    LOG_INF("accel y=%d.%06d", value_y.val1, value_y.val2 < 0 ? -value_y.val2 : value_y.val2);
+    LOG_INF("accel z=%d.%06d", value_z.val1, value_z.val2 < 0 ? -value_z.val2 : value_z.val2);
+}
+
 static void measure_and_report(zb_uint8_t param){
     int ret;
 
     if (!device_is_ready(sts4x.bus)) {
         LOG_ERR("STS4x I2C bus is not ready...");
-        return ;
-    }
-    /* temperature sensor */
-
-    /* -- measure command -- */
-    uint8_t cmd = 0xFD; // measure T, high precision
-    ret = i2c_write_dt(&sts4x, &cmd, 1);
-    // LOG_INF("sts4x write ret=%d", ret);
-
-    k_sleep(K_MSEC(10));
-
-    /* -- read 3 bytes back -- */
-    uint8_t rx_buf[3];
-    ret = i2c_read_dt(&sts4x, rx_buf, 3);
-    // LOG_INF("sts4x read ret=%d", ret);
-
-    // LOG_HEXDUMP_INF(rx_buf, sizeof(rx_buf), "sts4x raw");
-
-    /* convert raw bytes into celsius degrees */
-    uint8_t crc = crc8(rx_buf, 2, 0x31, 0xFF, false);
-    // LOG_INF("computed crc=%02x, received crc=%02x", crc, rx_buf[2]);
-
-    if (crc == rx_buf[2]) {
-        uint16_t raw = (rx_buf[0] << 8) | rx_buf[1];
-        int64_t temp_milli_c = -45000 + (175000LL * (int64_t)raw) / 65535;
-
-        zb_int16_t zcl_temp = (zb_int16_t)(temp_milli_c / 10); // millidegrees -> centidegrees
-        ZB_ZCL_SET_ATTRIBUTE(
-            LIGHT_BULB_ENDPOINT,
-            ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT,
-            ZB_ZCL_CLUSTER_SERVER_ROLE,
-            ZB_ZCL_ATTR_TEMP_MEASUREMENT_VALUE_ID,
-            (zb_uint8_t *)&zcl_temp,
-            ZB_FALSE
-        );
-
-        LOG_INF("temperature = %lld.%03lld C", temp_milli_c / 1000, temp_milli_c % 1000);
     } else {
-        LOG_ERR("STS4x CRC mismatch!");
+        uint8_t cmd = 0xFD;
+        ret = i2c_write_dt(&sts4x, &cmd, 1);
+        k_sleep(K_MSEC(10));
+        uint8_t rx_buf[3];
+        ret = i2c_read_dt(&sts4x, rx_buf, 3);
+        uint8_t crc = crc8(rx_buf, 2, 0x31, 0xFF, false);
+        if (crc == rx_buf[2]) {
+            uint16_t raw = (rx_buf[0] << 8) | rx_buf[1];
+            int64_t temp_milli_c = -45000 + (175000LL * (int64_t)raw) / 65535;
+            zb_int16_t zcl_temp = (zb_int16_t)(temp_milli_c / 10);
+            ZB_ZCL_SET_ATTRIBUTE(
+                LIGHT_BULB_ENDPOINT,
+                ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT,
+                ZB_ZCL_CLUSTER_SERVER_ROLE,
+                ZB_ZCL_ATTR_TEMP_MEASUREMENT_VALUE_ID,
+                (zb_uint8_t *)&zcl_temp,
+                ZB_FALSE
+            );
+            LOG_INF("temperature = %lld.%03lld C", temp_milli_c / 1000, temp_milli_c % 1000);
+        } else {
+            LOG_ERR("STS4x CRC mismatch!");
+        }
     }
-    ZB_SCHEDULE_APP_ALARM(measure_and_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(60000));
+
+    /* --- motion sensor reading --- */
+    if (device_is_ready(bmi270_dev)) {
+        LOG_INF("bmi270 is ready, reading now...");
+        read_motion();
+    } else {
+        LOG_ERR("Sensor bmi270 is not ready...");
+    }
+
+    ZB_SCHEDULE_APP_ALARM(measure_and_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(5000)); // shortened to 5s for testing
 }
 
 int main(void){
 
     LOG_INF("Starting Zigbee Light Bulb (Sleepy End Device)");
     gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE); /* configure led gpio as output*/
+
+    if (!device_is_ready(bmi270_dev)) {
+        LOG_ERR("Sensor bmi270 is not ready...");
+    } else {
+        configure_motion();
+    }
 
     ZB_ZCL_REGISTER_DEVICE_CB(zcl_device_cb); /* tell zboss which function ahould be called as an event handler callback */
     ZB_AF_REGISTER_DEVICE_CTX(&light_bulb_ctx); /* register device context */

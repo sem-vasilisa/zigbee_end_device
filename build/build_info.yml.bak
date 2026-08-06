@@ -1,0 +1,5 @@
+west:
+  command: /home/goodbyte/ncs/toolchains/b77d8c1312/usr/local/bin/west build -b BTZ_EndDevice/nrf54l15/cpuapp
+    -p -- -DBOARD_ROOT=/home/goodbyte/projects/workspace_zigbee
+  topdir: /home/goodbyte/projects/workspace_zigbee
+  version: 1.2.0

@@ -1,0 +1,7 @@
+default: zigbee-internal-btz
+build_dir: /home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build
+domains:
+  - name: zigbee-internal-btz
+    build_dir: /home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/zigbee-internal-btz
+flash_order:
+  - zigbee-internal-btz

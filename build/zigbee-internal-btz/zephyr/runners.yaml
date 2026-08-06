@@ -1,0 +1,30 @@
+# Available runners configured by board.cmake.
+runners:
+- jlink
+- nrfutil
+
+# Default flash runner if --runner is not given.
+flash-runner: jlink
+
+# Default debug runner if --runner is not given.
+debug-runner: jlink
+
+# Common runner configuration values.
+config:
+  board_dir: /home/goodbyte/projects/workspace_zigbee/boards/goodbyte/BTZ_EndDevice
+  # Build outputs:
+  elf_file: zephyr.elf
+  hex_file: /home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/merged.hex
+  bin_file: zephyr.bin
+  # Host tools:
+  gdb: /home/goodbyte/ncs/toolchains/b77d8c1312/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb
+
+# Runner specific arguments
+args:
+  jlink:
+    - --dt-flash=y
+    - --device=nRF54L15_M33
+    - --speed=4000
+  nrfutil:
+    []
+

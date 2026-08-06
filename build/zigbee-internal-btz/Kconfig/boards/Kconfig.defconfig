@@ -1,0 +1,2 @@
+# Load Zephyr board defconfig descriptions.
+osource "/home/goodbyte/projects/workspace_zigbee/boards/goodbyte/BTZ_EndDevice/Kconfig.defconfig"

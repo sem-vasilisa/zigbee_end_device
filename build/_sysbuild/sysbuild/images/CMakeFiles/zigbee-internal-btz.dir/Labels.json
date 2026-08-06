@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/CMakeFiles/zigbee-internal-btz"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/CMakeFiles/zigbee-internal-btz.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/CMakeFiles/zigbee-internal-btz-complete.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-build.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-configure.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-download.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-install.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-mkdir.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-patch.rule"
+		},
+		{
+			"file" : "/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"zigbee-internal-btz"
+		],
+		"name" : "zigbee-internal-btz"
+	}
+}

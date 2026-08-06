@@ -1,0 +1,13 @@
+# Target labels
+ zigbee-internal-btz
+# Source files and their labels
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/CMakeFiles/zigbee-internal-btz
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/CMakeFiles/zigbee-internal-btz.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/CMakeFiles/zigbee-internal-btz-complete.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-build.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-configure.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-download.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-install.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-mkdir.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-patch.rule
+/home/goodbyte/projects/workspace_zigbee/zigbee-internal-btz/build/_sysbuild/sysbuild/images/zigbee-internal-btz-prefix/src/zigbee-internal-btz-stamp/zigbee-internal-btz-update.rule

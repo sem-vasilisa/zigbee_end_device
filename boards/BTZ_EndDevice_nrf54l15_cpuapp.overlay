@@ -1,0 +1,42 @@
+/*
+ * The board devicetree (boards/goodbyte/BTZ_EndDevice/BTZ_EndDevice_nrf54l15_cpuapp.dts)
+ * disables every I2C sensor node. Re-enable the ones this app uses here instead of
+ * editing the shared board files, which the other projects in the workspace also use.
+ *
+ * bmi270 must be "okay" or the Zephyr sensor driver is never instantiated, so
+ * DEVICE_DT_GET(DT_NODELABEL(bmi270)) yields a device that can never become ready.
+ * sts4x does NOT need this - measure_and_report talks to it with raw i2c_write_dt/
+ * i2c_read_dt via I2C_DT_SPEC_GET, which only needs the node's reg/bus properties
+ * and ignores status. It is left disabled so no unused sts4x driver is built in.
+ */
+
+/*
+ * The BMI270 driver uploads its ~8 kB config blob at init in 256-byte bursts,
+ * issued as a two-part i2c write (1 register byte + 256 data bytes). The nRF
+ * TWIM driver cannot chain those into one EasyDMA transfer, so it copies them
+ * into its internal concat buffer, which defaults to 16 bytes:
+ *   <err> i2c_nrfx_twim: Need to use the internal driver buffer but its size
+ *   is insufficient (1 + 256 > 16)
+ * The upload then fails, bmi270's init returns an error, and device_is_ready()
+ * stays false forever. 264 = 1 + 256, rounded up to a word multiple.
+ */
+/*
+ * sensor_pwr is regulator-boot-on, so regulator_common_init() flips its enable
+ * GPIO and then waits exactly startup-delay-us before returning. That property
+ * defaulted to 0, so the rail was declared up the instant the pin toggled -
+ * while VDD was still ramping and the BMI270 had not finished its power-on
+ * reset. The sensor driver (init priority 90) then probed a chip that was not
+ * answering yet, so bmi270 init failed on some boots and succeeded on others.
+ * 10 ms comfortably covers the BMI270 ~2 ms start-up time plus rail ramp.
+ */
+&sensor_pwr {
+	startup-delay-us = <10000>;
+};
+
+&i2c30 {
+	zephyr,concat-buf-size = <264>;
+};
+
+&bmi270 {
+	status = "okay";
+};

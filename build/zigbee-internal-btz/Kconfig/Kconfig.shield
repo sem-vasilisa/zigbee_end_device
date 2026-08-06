@@ -1,0 +1,2 @@
+osource "/home/goodbyte/projects/workspace_zigbee/boards/shields/*/Kconfig.shield"
+osource "/home/goodbyte/projects/workspace_zigbee/nrf/boards/shields/*/Kconfig.shield"
