@@ -83,6 +83,8 @@ static zb_uint8_t zcl_device_cb(zb_bufid_t bufid){
     return ZB_FALSE;
 }
 
+static void send_test_report(zb_uint8_t param);
+
 void zboss_signal_handler(zb_bufid_t bufid){
     zb_zdo_app_signal_hdr_t *sg_p  = NULL;
     zb_zdo_app_signal_type_t  sig  = zb_get_app_signal(bufid, &sg_p);
@@ -102,6 +104,9 @@ void zboss_signal_handler(zb_bufid_t bufid){
         case ZB_BDB_SIGNAL_STEERING:
             if(status == RET_OK){
                 zb_zdo_pim_set_long_poll_interval(CONFIG_ZB_POLL_INTERVAL_S * 1000);
+                /* send first report right after joining */
+                ZB_SCHEDULE_APP_ALARM_CANCEL(send_test_report, ZB_ALARM_ANY_PARAM);
+                ZB_SCHEDULE_APP_ALARM(send_test_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(1000));
                 uint16_t panId = zb_get_pan_id();
                 uint8_t channel = zb_get_current_channel();
                 uint16_t shortAddr = zb_get_short_address();
@@ -169,8 +174,7 @@ int main(void){
 
     zb_zdo_pim_set_long_poll_interval(CONFIG_ZB_POLL_INTERVAL_S * 1000); /* how often an end device wakes up to poll a parent about a new message (default 30 s) */
     zigbee_enable(); /* enable zigbee */
-    
-    ZB_SCHEDULE_APP_ALARM(send_test_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(1000));
+
     k_sleep(K_FOREVER); /* sleep forever*/
     return 0;
 }
