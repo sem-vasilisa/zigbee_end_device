@@ -197,6 +197,7 @@ static void read_motion(void){
 static void measure_and_report(zb_uint8_t param){
     int ret;
 
+    /* --- temperature sensor reading --- */
     if (!device_is_ready(sts4x.bus)) {
         LOG_ERR("STS4x I2C bus is not ready...");
     } else {
