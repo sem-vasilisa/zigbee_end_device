@@ -31,4 +31,36 @@ config ZB_POLL_INTERVAL_S
 	  rodzica o zalegle wiadomosci. Kazde takie wybudzenie kosztuje prad,
 	  nawet gdy nie ma zadnych danych do odebrania.
 
+config ZB_DEEP_SLEEP
+	bool "Po wyslaniu raportu wejdz w System OFF (reboot co cykl)"
+	default n
+	select POWEROFF
+	help
+	  Domyslnie (n) urzadzenie spi w System ON: RAM i stos ZBOSS zyja,
+	  miedzy raportami leci tylko poll. Wlaczone (y) - po wyslaniu raportu
+	  uzbraja budzik GRTC na ZB_SEND_INTERVAL_S i wchodzi w System OFF.
+
+	  Wybudzenie to PELNY RESET: RAM znika, main() startuje od zera, stos
+	  ZBOSS wstaje na nowo i dolacza do sieci ponownie (sygnal
+	  ZB_BDB_SIGNAL_DEVICE_REBOOT, klucze czytane z ZBOSS NVRAM).
+
+	  Prad snu spada o rzad wielkosci, ale kazdy cykl placi za reboot
+	  i ponowne dolaczenie. Przy krotkich T wychodzi DROZEJ niz System ON;
+	  sens ma dopiero przy rzadkich raportach. Zeby znalezc punkt
+	  przeciecia, zmierz oba warianty przy tych samych T.
+
+	  UWAGA: sen musi byc krotszy niz ED aging timeout rodzica
+	  (ED_AGING_TIMEOUT_256MIN = 15360 s), inaczej rodzic wyrzuci dziecko
+	  i kazde wybudzenie bedzie pelnym dolaczaniem od zera, nie rebootem.
+
+config ZB_DEEP_SLEEP_SETTLE_MS
+	int "Ile czekac po wyslaniu raportu przed System OFF [ms]"
+	default 1000
+	range 50 10000
+	depends on ZB_DEEP_SLEEP
+	help
+	  ZB_ZCL_SEND_COMMAND_* tylko KOLEJKUJE ramke - wyjscie na antene
+	  dzieje sie pozniej, w watku ZBOSS. Natychmiastowy sys_poweroff()
+	  uciolby transmisje. Ten odstep daje stosowi czas na nadanie.
+
 source "Kconfig.zephyr"

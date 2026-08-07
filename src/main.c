@@ -8,6 +8,16 @@
 #include <zigbee/zigbee_error_handler.h> // ZB_ERROR_CHECK macro
 #include <zb_nrf_platform.h> // zigbee_enable()
 
+#if defined(CONFIG_ZB_DEEP_SLEEP)
+#include <zephyr/sys/poweroff.h>              /* sys_poweroff() */
+#include <zephyr/drivers/timer/nrf_grtc_timer.h> /* budzik przezywajacy System OFF */
+
+/* System OFF wywolujemy z main(), nie z watku ZBOSS: sys_poweroff() nigdy
+ * nie wraca, a watek stosu ma jeszcze dokonczyc nadawanie ramki. Callback
+ * alarmu tylko podnosi semafor, main czeka na nim zamiast na K_FOREVER. */
+static K_SEM_DEFINE(deep_sleep_sem, 0, 1);
+#endif
+
 LOG_MODULE_REGISTER(btz, LOG_LEVEL_INF);
 
 #define LIGHT_BULB_ENDPOINT 10
@@ -85,6 +95,16 @@ static zb_uint8_t zcl_device_cb(zb_bufid_t bufid){
 
 static void send_test_report(zb_uint8_t param);
 
+#if defined(CONFIG_ZB_DEEP_SLEEP)
+/* Wolane z watku ZBOSS po odczekaniu na nadanie ramki - samo usypianie
+ * robi main(), patrz komentarz przy deep_sleep_sem. */
+static void request_deep_sleep(zb_uint8_t param)
+{
+	ARG_UNUSED(param);
+	k_sem_give(&deep_sleep_sem);
+}
+#endif
+
 void zboss_signal_handler(zb_bufid_t bufid){
     zb_zdo_app_signal_hdr_t *sg_p  = NULL;
     zb_zdo_app_signal_type_t  sig  = zb_get_app_signal(bufid, &sg_p);
@@ -156,7 +176,15 @@ static void send_test_report(zb_uint8_t param)
 
     ZB_ZCL_SEND_COMMAND_SHORT_WITHOUT_ACK(bufid, ptr, coord_short_addr, ZB_APS_ADDR_MODE_16_ENDP_PRESENT, COORDINATOR_EP, LIGHT_BULB_ENDPOINT, ZB_AF_HA_PROFILE_ID, ZB_ZCL_CLUSTER_ID_ON_OFF, NULL, 0);
     LOG_INF("Sent test report"); /* locally we see that frame was sent */
+#if defined(CONFIG_ZB_DEEP_SLEEP)
+    /* Wariant System OFF: nie planujemy kolejnego raportu - po wybudzeniu
+     * program startuje od main() i raport uzbroi sie ponownie po dolaczeniu
+     * do sieci. Tu tylko dajemy stosowi czas na nadanie i budzimy main(). */
+    ZB_SCHEDULE_APP_ALARM(request_deep_sleep, 0,
+                          ZB_MILLISECONDS_TO_BEACON_INTERVAL(CONFIG_ZB_DEEP_SLEEP_SETTLE_MS));
+#else
     ZB_SCHEDULE_APP_ALARM(send_test_report, 0, ZB_MILLISECONDS_TO_BEACON_INTERVAL(CONFIG_ZB_SEND_INTERVAL_S * 1000)); /* repeats every CONFIG_ZB_SEND_INTERVAL_S seconds (default 20) */
+#endif
 }
 
 int main(void){
@@ -175,6 +203,22 @@ int main(void){
     zb_zdo_pim_set_long_poll_interval(CONFIG_ZB_POLL_INTERVAL_S * 1000); /* how often an end device wakes up to poll a parent about a new message (default 30 s) */
     zigbee_enable(); /* enable zigbee */
 
+#if defined(CONFIG_ZB_DEEP_SLEEP)
+    /* Czekamy, az raport pojdzie w eter, i gasimy uklad. GRTC budzi po
+     * ZB_SEND_INTERVAL_S, a wybudzenie z System OFF to reset - program
+     * wraca tutaj od gory main(), nie z tego miejsca. */
+    k_sem_take(&deep_sleep_sem, K_FOREVER);
+
+    int err = z_nrf_grtc_wakeup_prepare((uint64_t)CONFIG_ZB_SEND_INTERVAL_S * 1000000ULL);
+
+    if (err < 0) {
+        LOG_ERR("Nie udalo sie uzbroic budzika GRTC (%d) - nie usypiam", err);
+        k_sleep(K_FOREVER);
+    }
+    LOG_INF("System OFF na %d s", CONFIG_ZB_SEND_INTERVAL_S);
+    sys_poweroff();
+#else
     k_sleep(K_FOREVER); /* sleep forever*/
+#endif
     return 0;
 }
